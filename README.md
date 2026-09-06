@@ -27,39 +27,35 @@ Use your machine's LAN IP, not `localhost` — on a phone `localhost` is the pho
 
 ---
 
-## Two things block a real login today
+## API dependencies
 
-Neither lives in this repo. Both are small, and both are in `buynextdoor-api`.
+### 1. Native login — done in the API, not deployed yet
 
-### 1. The API cannot issue a token to a native client
+`buynextdoor-api` commit `28631d4` adds Sanctum's token half: the
+`personal_access_tokens` migration, `HasApiTokens` on the User model, and a
+`device_name` fork in `AuthController::login` — send it and you get a token,
+omit it and you get the session cookie the web has always had. Logout revokes
+only the calling device.
 
-`AuthController::login` calls `auth()->login($user)` on the `web` guard and
-returns a session cookie. `App\Domain\Identity\Models\User` does not use
-`HasApiTokens`, and there is no `personal_access_tokens` table. A native app has
-no cookie jar to put a session in, so **login returns 200 and the app still has
-no credential**.
+Sanctum, not Passport: Passport is an OAuth2 authorization server for delegating
+access to third parties, and this is a first-party app. `auth:sanctum` already
+accepts a bearer token, and `EnsureFrontendRequestsAreStateful` only goes
+stateful when the request `Origin` matches `SANCTUM_STATEFUL_DOMAINS` — a native
+client matches nothing and falls through to token auth. No routes changed and
+the web is untouched.
 
-The fix is Sanctum's token half — _not_ Passport. Passport is an OAuth2
-authorization server for delegating access to third parties; this is a
-first-party app, and adding it would mean a second auth stack alongside the
-`auth:sanctum` middleware all 399 routes already use.
+Verified end to end against a local API: a `device_name` login returns a token,
+the token authenticates `/me` with no cookie, logout 401s it, and a login
+without `device_name` still carries no token.
 
-Three pieces:
+**What is left: deploying that commit to staging**, which runs the migration.
+Until then login here fails against `api.staging.buynextdoor.ph`.
 
-1. Add the `personal_access_tokens` migration (`php artisan vendor:publish
---provider="Laravel\Sanctum\SanctumServiceProvider"`).
-2. `use Laravel\Sanctum\HasApiTokens;` on the User model.
-3. In `login`, when the request carries `device_name`, return
-   `$user->createToken($request->device_name)->plainTextToken` in the payload
-   and skip the session login. In `logout`, `$request->user()->currentAccessToken()->delete()`.
-
-Nothing else changes. `auth:sanctum` already accepts a bearer token _or_ a
-session cookie, and `EnsureFrontendRequestsAreStateful` only switches to cookie
-mode when the request `Origin` matches `SANCTUM_STATEFUL_DOMAINS` — a native app
-sends no such origin and falls through to token auth. **The web is unaffected.**
-
-This app already sends `device_name` on login and reads `data.token`
-(`src/api/domains/auth.ts`), so it starts working the moment the API does.
+One decision deliberately left open: `config/sanctum.php` has `'expiration' =>
+null`, so tokens never expire. That is the usual Sanctum-on-mobile posture
+(revocation rather than expiry, since Sanctum has no refresh tokens), but it
+means a token on a lost phone is valid until someone revokes it. There is no
+"sign out my other devices" UI yet.
 
 ### 2. Production still runs AdonisJS
 
