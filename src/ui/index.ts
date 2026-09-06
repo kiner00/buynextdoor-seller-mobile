@@ -8,3 +8,4 @@ export { StatTile } from './StatTile';
 export { NotBuiltYet } from './NotBuiltYet';
 export { PaymentStatusBadge, ShippingStatusBadge } from './StatusBadge';
 export { ActionSheet, type SheetAction } from './ActionSheet';
+export { OfflineBanner } from './OfflineBanner';

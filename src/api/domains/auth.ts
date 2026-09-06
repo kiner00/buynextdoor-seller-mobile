@@ -27,6 +27,9 @@ export const authApi = {
 
   me: () => apiFetch<ApiEnvelope<SessionPayload>>('/me'),
 
+  /** Revokes every token and forgets every push device — the answer to a lost phone. */
+  logoutAll: () => apiFetch<ApiEnvelope<null>>('/logout-all', { method: 'POST' }),
+
   /** Revokes just this device's token, server-side. */
   logout: () => apiFetch<ApiEnvelope<null>>('/logout', { method: 'POST' }),
 

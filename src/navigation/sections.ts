@@ -6,6 +6,8 @@ import {
   CircleDollarSign,
   CreditCard,
   GraduationCap,
+  Bell,
+  BellRing,
   LayoutGrid,
   Megaphone,
   MessageSquare,
@@ -48,6 +50,7 @@ export interface SectionGroup {
 export const MORE_SECTIONS: SectionGroup[] = [
   {
     items: [
+      { href: '/notifications', label: 'Notifications', icon: Bell },
       { href: '/messages', label: 'Messages', icon: MessageSquare },
       { href: '/copypaste', label: 'Copypaste posting', icon: Megaphone },
       { href: '/trainings', label: 'Trainings', icon: GraduationCap },
@@ -87,7 +90,10 @@ export const MORE_SECTIONS: SectionGroup[] = [
     ],
   },
   {
-    items: [{ href: '/profile', label: 'Seller profile', icon: Settings }],
+    items: [
+      { href: '/profile', label: 'Seller profile', icon: Settings },
+      { href: '/notification-settings', label: 'Push notifications', icon: BellRing },
+    ],
   },
 ];
 

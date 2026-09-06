@@ -10,6 +10,7 @@ import { queryClient } from '../src/api/queryClient';
 import { installReactQueryNativeBridges } from '../src/api/reactQueryNative';
 import { SessionProvider } from '../src/auth/session';
 import { useNotificationRouting } from '../src/notifications/useNotificationRouting';
+import { OfflineBanner } from '../src/ui/OfflineBanner';
 
 export default function RootLayout() {
   useEffect(() => installReactQueryNativeBridges(), []);
@@ -23,6 +24,7 @@ export default function RootLayout() {
             <StatusBar style="dark" />
             {/* Inside the provider: routing a tapped notification has to wait
                 for the session, or it races the redirect to /login. */}
+            <OfflineBanner />
             <Navigation />
           </SessionProvider>
         </QueryClientProvider>

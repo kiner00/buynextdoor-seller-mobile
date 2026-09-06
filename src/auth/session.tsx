@@ -23,6 +23,8 @@ interface SessionValue {
   session: SessionPayload | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Every device, not just this one. */
+  signOutEverywhere: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -116,9 +118,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await forget();
   }, [forget]);
 
+  const signOutEverywhere = useCallback(async () => {
+    // The API revokes every token and every push device in one call, so the
+    // per-device unregister is redundant — this call is the whole point.
+    try {
+      await authApi.logoutAll();
+    } catch {
+      // Offline: at least this phone forgets its credential.
+    }
+    pushToken.current = null;
+    disconnectEcho();
+    await forget();
+  }, [forget]);
+
   const value = useMemo<SessionValue>(
-    () => ({ status, session, signIn, signOut }),
-    [status, session, signIn, signOut],
+    () => ({ status, session, signIn, signOut, signOutEverywhere }),
+    [status, session, signIn, signOut, signOutEverywhere],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

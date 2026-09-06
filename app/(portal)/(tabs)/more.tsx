@@ -1,4 +1,4 @@
-import { View, Pressable } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 import { Link } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 import { useSession } from '../../../src/auth/session';
@@ -13,7 +13,7 @@ import { MIN_TOUCH_TARGET, colors } from '../../../src/theme/tokens';
  * and the same order.
  */
 export default function MoreScreen() {
-  const { session, signOut } = useSession();
+  const { session, signOut, signOutEverywhere } = useSession();
   const me = useSellerMe();
 
   const seller = me.data?.hub_owner;
@@ -44,6 +44,24 @@ export default function MoreScreen() {
         ))}
 
         <Button label="Sign out" variant="secondary" onPress={() => void signOut()} />
+        <Button
+          label="Sign out of all devices"
+          variant="ghost"
+          onPress={() =>
+            Alert.alert(
+              'Sign out everywhere?',
+              'Every phone and browser signed in to this account will be signed out, and none will get push notifications until they sign in again. Use this if a phone was lost.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Sign out everywhere',
+                  style: 'destructive',
+                  onPress: () => void signOutEverywhere(),
+                },
+              ],
+            )
+          }
+        />
       </View>
     </Screen>
   );

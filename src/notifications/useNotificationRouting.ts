@@ -10,7 +10,7 @@ import { useSession } from '../auth/session';
  * still has to go find the order it was about. The payload carries `type` and
  * the order's reference precisely so this can be answered without a lookup.
  */
-function destinationFor(data: Record<string, unknown> | undefined): string | null {
+export function destinationFor(data: Record<string, unknown> | undefined): string | null {
   if (!data) return null;
 
   const type = typeof data.type === 'string' ? data.type : null;
@@ -38,8 +38,8 @@ function destinationFor(data: Record<string, unknown> | undefined): string | nul
     case 'support_message':
       return '/messages';
     default:
-      // An unknown type still opens the app; it just does not guess a screen.
-      return null;
+      // Anything else lands on the inbox, where the same notification is waiting.
+      return '/notifications';
   }
 }
 
