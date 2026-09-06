@@ -6,3 +6,5 @@ export { EmptyState, ErrorState, LoadingState } from './States';
 export { Heading, Muted, Text } from './Text';
 export { StatTile } from './StatTile';
 export { NotBuiltYet } from './NotBuiltYet';
+export { PaymentStatusBadge, ShippingStatusBadge } from './StatusBadge';
+export { ActionSheet, type SheetAction } from './ActionSheet';
