@@ -1,10 +1,19 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/domains/auth';
 import { onUnauthorized } from '../api/client';
 import type { SessionPayload } from '../api/types';
 import { clearToken, getToken, setToken } from './token';
+import { registerForPush, unregisterForPush } from '../notifications/push';
 
 type Status = 'loading' | 'authenticated' | 'anonymous';
 
@@ -29,6 +38,8 @@ const SessionContext = createContext<SessionValue | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>('loading');
   const [session, setSession] = useState<SessionPayload | null>(null);
+  // Held so sign-out can unregister this exact install rather than guessing.
+  const pushToken = useRef<string | null>(null);
   const queryClient = useQueryClient();
 
   const forget = useCallback(async () => {
@@ -55,6 +66,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         setSession(response.data);
         setStatus('authenticated');
+        // Not awaited: the app is usable before the phone is registered, and
+        // Expo's token call can be slow on a cold network.
+        void registerForPush().then((token) => {
+          pushToken.current = token;
+        });
       } catch {
         // Revoked, expired, or the phone is offline. Either way we cannot
         // prove the session, so start at login rather than a broken shell.
@@ -74,9 +90,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await setToken(response.data.token);
     setSession(response.data);
     setStatus('authenticated');
+
+    // After the token is stored: registering is an authenticated call.
+    void registerForPush().then((token) => {
+      pushToken.current = token;
+    });
   }, []);
 
   const signOut = useCallback(async () => {
+    // Before the credential is cleared, because unregistering needs it — and
+    // before anyone else signs in on this phone and starts getting these
+    // orders.
+    await unregisterForPush(pushToken.current);
+    pushToken.current = null;
+
     // Best-effort revoke: if the phone is offline the token still has to leave
     // this device, so a failed call must not block the sign-out.
     try {

@@ -21,7 +21,10 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": ["android.permission.CAMERA"]
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -40,6 +43,13 @@
         "expo-camera",
         {
           "cameraPermission": "Scan an order slip or product label to pull it up instantly."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#008819",
+          "defaultChannel": "default"
         }
       ]
     ],
