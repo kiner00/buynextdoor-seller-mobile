@@ -133,10 +133,24 @@ every cold start.
 
 ## What is built
 
-|             |                                                                                                                                                                                                                                                                                                                                                                              |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Working** | Login, forgot password, session restore + sign-out, auth guard, dashboard (all 14 metrics + SKU counter), navigation shell, **Orders** (filterable infinite list + detail with status changes, mark paid/complete/cancel), **Wallet** (balance, ledger, top-up with a photo of the deposit slip, withdrawal request), **Catalogue** (search, filters, SKU quota, activation) |
-| **Stubbed** | The other 16 sections. Each is a real route that says so and points at the website, rather than a fake empty state                                                                                                                                                                                                                                                           |
+Every section of the seller web portal is ported. **All 22 entries in the More
+menu and all five bottom tabs are real screens.** The single remaining
+placeholder is _Inventory recovery_, which is a deliberate "Soon" on the web too.
+
+| Section                                    | Notes                                                                                                                  |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Auth, Dashboard, Orders, Wallet, Catalogue | First batch; see earlier commits                                                                                       |
+| Activated products                         | The catalogue filtered to what the seller carries                                                                      |
+| Purchases                                  | What the seller bought from BND, read-only                                                                             |
+| Inventory                                  | Stock + movements; tap a row to switch on-hand / dropship                                                              |
+| Finance, Billing, Reports, Referrals       | Read-mostly. Referrals shares the link via the native share sheet                                                      |
+| Trainings                                  | Tracks and lessons; opening a lesson marks it started                                                                  |
+| Group orders                               | Procurement pools the seller has joined                                                                                |
+| Storefront, Seller profile, Branches       | Forms. Images and documents stay on the website (they need `/upload` first)                                            |
+| Copypaste posting                          | Pick a variant, **Share** to the native sheet or **Copy**                                                              |
+| Scan QR                                    | Camera + manual entry; an `OR…` code opens the order, anything else searches the catalogue                             |
+| Create order                               | Two steps — pick products, then the customer. Delivery requires an address                                             |
+| Messages                                   | Inbox + thread. Polls every 5s as the floor; upgrades to Reverb websockets when the private-channel handshake succeeds |
 
 Ported sections replace the stub in place; nothing else has to move.
 
@@ -185,6 +199,22 @@ running the real controller against the staging database rather than reading
 
 The first four degrade silently — a card titled with its SKU and an empty
 ladder. The last one 422s, because the rule is `required`.
+
+This batch was verified differently, and it was worth it: with an IAP tunnel to
+the staging database, `php artisan tinker` in the app container can drive real
+HTTP requests through the Laravel kernel as a signed-in seller — exact JSON, no
+writes, no credentials needed. The recipe is in the project memory. It found:
+
+- `/hubowner/reports/*` take **`start_date` / `end_date`**. The camelCase the web
+  client sends is a 422, not a silent drop.
+- `/chat/conversations` and `/hubowner/wallet/ledgers` are bare `{ items }`
+  with no meta; `/hubowner/branches` is `{ branches }`; `/hubowner/procurement-pools`
+  is `{ pools }`; `/hubowner/trainings` is a bare array. `adaptPage` in
+  `src/api/domains/shared.ts` tolerates all of them.
+- `/broadcasting/auth` is registered with Laravel's default `web` middleware, so
+  a bearer token cannot authorize a private channel yet. That is why Messages
+  polls as its floor. The API fix is one line in `bootstrap/app.php` — but it
+  touches CSRF handling, so it is flagged rather than made.
 
 ```bash
 TOKEN=$(curl -s -X POST "$API/login" -H 'Content-Type: application/json' \

@@ -21,10 +21,7 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.POST_NOTIFICATIONS"
-      ]
+      "permissions": ["android.permission.CAMERA", "android.permission.POST_NOTIFICATIONS"]
     },
     "plugins": [
       "expo-router",
@@ -57,7 +54,13 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiUrl": "https://api.staging.buynextdoor.ph"
+      "apiUrl": "https://api.staging.buynextdoor.ph",
+      "reverb": {
+        "key": "8l63j9fqdb4vvh7p6k8w",
+        "host": "ws.staging.buynextdoor.ph",
+        "port": 443,
+        "scheme": "https"
+      }
     }
   }
 }

@@ -14,6 +14,7 @@ import { onUnauthorized } from '../api/client';
 import type { SessionPayload } from '../api/types';
 import { clearToken, getToken, setToken } from './token';
 import { registerForPush, unregisterForPush } from '../notifications/push';
+import { disconnectEcho } from '../realtime/echo';
 
 type Status = 'loading' | 'authenticated' | 'anonymous';
 
@@ -103,6 +104,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // orders.
     await unregisterForPush(pushToken.current);
     pushToken.current = null;
+    disconnectEcho();
 
     // Best-effort revoke: if the phone is offline the token still has to leave
     // this device, so a failed call must not block the sign-out.
