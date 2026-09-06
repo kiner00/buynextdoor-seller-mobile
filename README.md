@@ -133,10 +133,10 @@ every cold start.
 
 ## What is built
 
-|             |                                                                                                                                                                                                                           |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Working** | Login, forgot password, session restore + sign-out, auth guard, dashboard (all 14 metrics + SKU counter), navigation shell, **Orders** (filterable infinite list + detail with status changes, mark paid/complete/cancel) |
-| **Stubbed** | The other 18 sections. Each is a real route that says so and points at the website, rather than a fake empty state                                                                                                        |
+|             |                                                                                                                                                                                                                                                                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Working** | Login, forgot password, session restore + sign-out, auth guard, dashboard (all 14 metrics + SKU counter), navigation shell, **Orders** (filterable infinite list + detail with status changes, mark paid/complete/cancel), **Wallet** (balance, ledger, top-up with a photo of the deposit slip, withdrawal request) |
+| **Stubbed** | The other 17 sections. Each is a real route that says so and points at the website, rather than a fake empty state                                                                                                                                                                                                   |
 
 Ported sections replace the stub in place; nothing else has to move.
 
@@ -152,6 +152,20 @@ web client:
   client's comment claims. The wrong key yields an empty list, not an error.
 - It filters on a scalar `status`. Sending `statuses[]` — the shape the web's
   `listQuery` defaults to — returns **every** row, unfiltered, with a 200.
+  (Fixed on the web too, in `buynextdoor-fe` `0e8886c`.)
+
+The wallet then produced three different shapes across one domain:
+
+| Endpoint                       | Shape                         | Paginated?                                                                                             |
+| ------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `/hubowner/wallet`             | `{ balance, income_balance }` | n/a                                                                                                    |
+| `/hubowner/wallet/ledgers`     | `{ items }`                   | **No** — `WalletService::ledgerFor` does `->limit($perPage)->get()`, so `page` is accepted and ignored |
+| `/hubowner/wallet/topups`      | `{ data, meta }`              | Yes                                                                                                    |
+| `/hubowner/wallet/withdrawals` | `{ data, meta }`              | Yes                                                                                                    |
+
+The ledger one is why that screen is a capped "latest 50" list rather than an
+infinite scroll: asking for page 2 returns page 1 again, so infinite scroll
+would append the same rows forever.
 
 So when porting a screen, check the response shape and the query spelling
 against a live API, not against the TypeScript. A wrong guess renders a

@@ -19,6 +19,13 @@ export interface SellerProfile {
   email: string | null;
   contact_number: string | null;
   contact_person: string | null;
+  /** The payout account, verified present on /hubowner/me. Offered as a
+      prefill on the withdrawal form rather than filled in silently — a stale
+      account number is the one mistake here that costs real money. */
+  payment_bank_name: string | null;
+  payment_bank_account_number: string | null;
+  payment_bank_account_name: string | null;
+  payment_bank_account_type: string | null;
   rating: number | null;
   is_subscribed: number | null;
   is_member: number | null;
