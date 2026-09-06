@@ -133,10 +133,10 @@ every cold start.
 
 ## What is built
 
-|             |                                                                                                                                                                                                                                                                                                                      |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Working** | Login, forgot password, session restore + sign-out, auth guard, dashboard (all 14 metrics + SKU counter), navigation shell, **Orders** (filterable infinite list + detail with status changes, mark paid/complete/cancel), **Wallet** (balance, ledger, top-up with a photo of the deposit slip, withdrawal request) |
-| **Stubbed** | The other 17 sections. Each is a real route that says so and points at the website, rather than a fake empty state                                                                                                                                                                                                   |
+|             |                                                                                                                                                                                                                                                                                                                                                                              |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Working** | Login, forgot password, session restore + sign-out, auth guard, dashboard (all 14 metrics + SKU counter), navigation shell, **Orders** (filterable infinite list + detail with status changes, mark paid/complete/cancel), **Wallet** (balance, ledger, top-up with a photo of the deposit slip, withdrawal request), **Catalogue** (search, filters, SKU quota, activation) |
+| **Stubbed** | The other 16 sections. Each is a real route that says so and points at the website, rather than a fake empty state                                                                                                                                                                                                                                                           |
 
 Ported sections replace the stub in place; nothing else has to move.
 
@@ -170,6 +170,21 @@ would append the same rows forever.
 So when porting a screen, check the response shape and the query spelling
 against a live API, not against the TypeScript. A wrong guess renders a
 plausible screen showing the wrong data.
+
+A third way the API disagrees with the web client, found the same way — by
+running the real controller against the staging database rather than reading
+`hubCatalogue.ts`:
+
+| `/hubowner/catalogue` | Web client expects                  | Laravel actually sends |
+| --------------------- | ----------------------------------- | ---------------------- |
+| product name          | `productDescription.name`           | `name`                 |
+| category              | `category.categoryDescription.name` | `category` (a string)  |
+| BND stock             | `productInventory.qty`              | `bnd_qty`              |
+| price ladder          | `planPrices`                        | `plan_prices`          |
+| activate body         | `{ activationType }`                | `{ activation_type }`  |
+
+The first four degrade silently — a card titled with its SKU and an empty
+ladder. The last one 422s, because the rule is `required`.
 
 ```bash
 TOKEN=$(curl -s -X POST "$API/login" -H 'Content-Type: application/json' \
