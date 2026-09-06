@@ -1,5 +1,7 @@
 import { View } from 'react-native';
-import { Card, Heading, Muted, Screen, Text } from './index';
+import { Card } from './Card';
+import { Screen } from './Screen';
+import { Heading, Muted, Text } from './Text';
 
 /**
  * A section that exists in the navigation but hasn't been ported from the web
