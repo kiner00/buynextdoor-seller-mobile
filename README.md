@@ -133,12 +133,35 @@ every cold start.
 
 ## What is built
 
-|             |                                                                                                                            |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Working** | Login, forgot password, session restore + sign-out, auth guard, dashboard (all 14 metrics + SKU counter), navigation shell |
-| **Stubbed** | The other 19 sections. Each is a real route that says so and points at the website, rather than a fake empty state         |
+|             |                                                                                                                                                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Working** | Login, forgot password, session restore + sign-out, auth guard, dashboard (all 14 metrics + SKU counter), navigation shell, **Orders** (filterable infinite list + detail with status changes, mark paid/complete/cancel) |
+| **Stubbed** | The other 18 sections. Each is a real route that says so and points at the website, rather than a fake empty state                                                                                                        |
 
 Ported sections replace the stub in place; nothing else has to move.
+
+---
+
+## Verify a screen against the real API before believing it
+
+Two contract details on the orders endpoint were wrong in ways nothing would
+have reported, and both were found by curling the API rather than reading the
+web client:
+
+- It answers `{ data, meta }`, **not** the `{ items, pagination }` the web
+  client's comment claims. The wrong key yields an empty list, not an error.
+- It filters on a scalar `status`. Sending `statuses[]` — the shape the web's
+  `listQuery` defaults to — returns **every** row, unfiltered, with a 200.
+
+So when porting a screen, check the response shape and the query spelling
+against a live API, not against the TypeScript. A wrong guess renders a
+plausible screen showing the wrong data.
+
+```bash
+TOKEN=$(curl -s -X POST "$API/login" -H 'Content-Type: application/json' \
+  -d '{"email":"…","password":"…","device_name":"probe"}' | jq -r .data.token)
+curl -s "$API/hubowner/customer/orders?per_page=2" -H "Authorization: Bearer $TOKEN" | jq
+```
 
 ---
 
