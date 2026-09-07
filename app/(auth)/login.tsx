@@ -1,100 +1,155 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { Link } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 import { useSession } from '../../src/auth/session';
+import { useGoogleSignIn } from '../../src/auth/google';
 import { ApiError, NetworkError } from '../../src/api/errors';
-import { Button, Field, Heading, Muted, Screen, Text } from '../../src/ui';
+import type { MobileLoginPayload } from '../../src/api/domains/auth';
+import {
+  AuthBrandShell,
+  Button,
+  Field,
+  GoogleButton,
+  Heading,
+  Muted,
+  PasswordField,
+  Text,
+} from '../../src/ui';
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginScreen() {
-  const { signIn } = useSession();
-  const insets = useSafeAreaInsets();
-
+  const { signIn, adoptSession } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [touched, setTouched] = useState({ email: false, password: false });
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+
+  const google = useGoogleSignIn('login', (payload: MobileLoginPayload) => adoptSession(payload));
+
+  // Same rules as the web's zod schema, shown inline once a field is touched.
+  const emailError =
+    touched.email && email.trim().length === 0
+      ? 'Email is required'
+      : touched.email && !EMAIL.test(email.trim())
+        ? 'Enter a valid email'
+        : (fieldErrors.email ?? null);
+  const passwordError =
+    touched.password && password.length === 0 ? 'Password is required' : (fieldErrors.password ?? null);
+
+  const canSubmit = EMAIL.test(email.trim()) && password.length > 0 && !submitting && !google.busy;
 
   const onSubmit = async () => {
+    setTouched({ email: true, password: true });
+    if (!canSubmit) return;
     setSubmitting(true);
-    setError(null);
+    setFormError(null);
+    setFieldErrors({});
     try {
       await signIn(email.trim(), password);
-      // No navigation here: the gate in (auth)/_layout redirects as soon as
-      // status flips to authenticated. Pushing as well would race it.
     } catch (cause) {
-      setError(
-        cause instanceof NetworkError
-          ? cause.message
-          : cause instanceof ApiError
-            ? (cause.firstFieldError ?? cause.message)
+      if (cause instanceof ApiError && cause.fieldErrors) {
+        // The API puts credential failures under `email`, like the web.
+        setFieldErrors({
+          email: cause.fieldErrors.email?.[0],
+          password: cause.fieldErrors.password?.[0],
+        });
+      } else {
+        setFormError(
+          cause instanceof NetworkError || cause instanceof ApiError
+            ? cause.message
             : 'Could not sign you in. Please try again.',
-      );
+        );
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !submitting;
+  const storeUrl = (Constants.expoConfig?.extra as { storeUrl?: string } | undefined)?.storeUrl;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      className="flex-1 bg-white"
-    >
-      <Screen className="flex-1 bg-white">
-        <View className="gap-6 px-6" style={{ paddingTop: insets.top + 48 }}>
-          <View className="gap-2">
-            <Heading className="text-2xl">Welcome back</Heading>
-            <Muted>Sign in to your BuyNextDoor seller account.</Muted>
+    <AuthBrandShell footnote="This app is for BuyNextDoor sellers. Buyers use the website or the storefront app.">
+      <View className="gap-5">
+        <View className="gap-1">
+          <Heading className="text-2xl">Welcome back</Heading>
+          <Muted>Sign in to your seller dashboard.</Muted>
+        </View>
+
+        {formError || google.error ? (
+          <View className="rounded-lg border border-red-200 bg-red-50 p-3">
+            <Text className="text-[14px] text-red-700">{formError ?? google.error}</Text>
           </View>
+        ) : null}
 
-          <View className="gap-4">
-            <Field
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-              textContentType="emailAddress"
-              placeholder="you@example.com"
-              editable={!submitting}
-            />
-            <Field
-              label="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="current-password"
-              textContentType="password"
-              placeholder="••••••••"
-              editable={!submitting}
-              onSubmitEditing={() => canSubmit && onSubmit()}
-              returnKeyType="go"
-            />
+        <Field
+          label="Email"
+          value={email}
+          onChangeText={setEmail}
+          onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+          error={emailError}
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          placeholder="you@example.com"
+          editable={!submitting}
+        />
 
-            {error ? (
-              <View className="rounded-lg border border-red-200 bg-red-50 p-3">
-                <Text className="text-[14px] text-red-700">{error}</Text>
-              </View>
-            ) : null}
-
-            <Button
-              label="Sign in"
-              onPress={onSubmit}
-              loading={submitting}
-              disabled={!canSubmit}
-              className="mt-2"
-            />
-
+        <View>
+          <View className="flex-row items-baseline justify-between">
+            <Text className="text-[13px] font-medium text-neutral-700">Password</Text>
             <Link href="/forgot-password" asChild>
-              <Button label="Forgot password?" variant="ghost" />
+              <Text className="text-[12px] font-medium text-brand-700">Forgot password?</Text>
             </Link>
           </View>
+          <PasswordField
+            label=""
+            value={password}
+            onChangeText={setPassword}
+            onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+            error={passwordError}
+            autoComplete="current-password"
+            textContentType="password"
+            editable={!submitting}
+            onSubmitEditing={() => void onSubmit()}
+            returnKeyType="go"
+            className="mt-1.5 gap-1.5"
+          />
         </View>
-      </Screen>
-    </KeyboardAvoidingView>
+
+        <Button label="Sign in" onPress={() => void onSubmit()} loading={submitting} disabled={!canSubmit} />
+
+        {google.available ? (
+          <>
+            <View className="flex-row items-center gap-3">
+              <View className="h-px flex-1 bg-neutral-200" />
+              <Muted className="text-[12px]">or</Muted>
+              <View className="h-px flex-1 bg-neutral-200" />
+            </View>
+            <GoogleButton label="Continue with Google" onPress={google.start} disabled={google.busy || submitting} />
+          </>
+        ) : null}
+
+        <Text className="text-center text-[14px] text-neutral-600">
+          New here?{' '}
+          <Link href="/register" asChild>
+            <Text className="text-[14px] font-medium text-brand-700">Create a seller account</Text>
+          </Link>
+        </Text>
+
+        {storeUrl ? (
+          <Muted className="text-center text-[12px]">
+            Shopping instead?{' '}
+            <Text className="text-[12px] font-medium text-brand-700" onPress={() => void Linking.openURL(storeUrl)}>
+              Go to the BuyNextDoor storefront
+            </Text>
+          </Muted>
+        ) : null}
+      </View>
+    </AuthBrandShell>
   );
 }

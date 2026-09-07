@@ -12,6 +12,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/domains/auth';
 import { onUnauthorized } from '../api/client';
 import type { SessionPayload } from '../api/types';
+import type { MobileLoginPayload } from '../api/domains/auth';
 import { clearToken, getToken, setToken } from './token';
 import { registerForPush, unregisterForPush } from '../notifications/push';
 import { disconnectEcho } from '../realtime/echo';
@@ -22,6 +23,8 @@ interface SessionValue {
   status: Status;
   session: SessionPayload | null;
   signIn: (email: string, password: string) => Promise<void>;
+  /** Adopt a login payload obtained another way — Google sign-in hands one back. */
+  adoptSession: (payload: MobileLoginPayload) => Promise<void>;
   signOut: () => Promise<void>;
   /** Every device, not just this one. */
   signOutEverywhere: () => Promise<void>;
@@ -88,17 +91,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // Any request that comes back 401 means the token died mid-session.
   useEffect(() => onUnauthorized(() => void forget()), [forget]);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const response = await authApi.login({ email, password });
-    await setToken(response.data.token);
-    setSession(response.data);
+  const adoptSession = useCallback(async (payload: MobileLoginPayload) => {
+    await setToken(payload.token);
+    setSession(payload);
     setStatus('authenticated');
-
-    // After the token is stored: registering is an authenticated call.
     void registerForPush().then((token) => {
       pushToken.current = token;
     });
   }, []);
+
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      const response = await authApi.login({ email, password });
+      await adoptSession(response.data);
+    },
+    [adoptSession],
+  );
 
   const signOut = useCallback(async () => {
     // Before the credential is cleared, because unregistering needs it — and
@@ -132,8 +140,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [forget]);
 
   const value = useMemo<SessionValue>(
-    () => ({ status, session, signIn, signOut, signOutEverywhere }),
-    [status, session, signIn, signOut, signOutEverywhere],
+    () => ({ status, session, signIn, adoptSession, signOut, signOutEverywhere }),
+    [status, session, signIn, adoptSession, signOut, signOutEverywhere],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

@@ -73,6 +73,23 @@ lands. Repoint `production.env.EXPO_PUBLIC_API_URL` in `eas.json` on the day.
 
 ---
 
+## Signing in
+
+The auth screens match the web's: brand lockup, one elevated card, inline
+validation, a password toggle, and the same links. Two things to know:
+
+- **Google sign-in is wired but dormant.** The button appears only once
+  `extra.google.{androidClientId,iosClientId}` in `app.json` (or the
+  `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` env vars) hold real OAuth client IDs from the
+  Google console, and the API's `GOOGLE_NATIVE_CLIENT_IDS` lists the same IDs.
+  Google runs on the device and the API exchanges the ID token for a Sanctum
+  token at `POST /google/native` — the web's redirect flow cannot serve a phone.
+- **Registration is Google-only**, exactly as on the seller website. Until the
+  client IDs exist, the register screen points at the website instead.
+
+The Android client needs the app's signing SHA-1 (`eas credentials` prints it);
+the iOS client needs the bundle id `ph.buynextdoor.seller`.
+
 ## Layout
 
 ```

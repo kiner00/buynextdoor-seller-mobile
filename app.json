@@ -48,7 +48,8 @@
           "color": "#008819",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
@@ -60,6 +61,12 @@
         "host": "ws.staging.buynextdoor.ph",
         "port": 443,
         "scheme": "https"
+      },
+      "storeUrl": "https://buynextdoor.ph",
+      "google": {
+        "androidClientId": "",
+        "iosClientId": "",
+        "webClientId": ""
       }
     }
   }

@@ -1,19 +1,24 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { authApi } from '../../src/api/domains/auth';
 import { ApiError, NetworkError } from '../../src/api/errors';
-import { Button, Field, Heading, Muted, Screen, Text } from '../../src/ui';
+import { AuthBrandShell, Button, Field, Heading, Muted, Text } from '../../src/ui';
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPasswordScreen() {
-  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
+  const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const emailError = touched && !EMAIL.test(email.trim()) ? 'Enter a valid email' : null;
+
   const onSubmit = async () => {
+    setTouched(true);
+    if (!EMAIL.test(email.trim())) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -21,11 +26,9 @@ export default function ForgotPasswordScreen() {
       setSent(true);
     } catch (cause) {
       setError(
-        cause instanceof NetworkError
-          ? cause.message
-          : cause instanceof ApiError
-            ? (cause.firstFieldError ?? cause.message)
-            : 'Could not send the reset link.',
+        cause instanceof NetworkError || cause instanceof ApiError
+          ? (cause instanceof ApiError ? (cause.firstFieldError ?? cause.message) : cause.message)
+          : 'Could not send the reset link.',
       );
     } finally {
       setSubmitting(false);
@@ -33,13 +36,11 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <Screen className="flex-1 bg-white">
-      <View className="gap-6 px-6" style={{ paddingTop: insets.top + 32 }}>
-        <View className="gap-2">
+    <AuthBrandShell>
+      <View className="gap-5">
+        <View className="gap-1">
           <Heading className="text-2xl">Reset your password</Heading>
-          <Muted>
-            We&apos;ll email you a link. Opening it on this phone takes you back into the app.
-          </Muted>
+          <Muted>We&apos;ll email you a link. Opening it on this phone brings you back here.</Muted>
         </View>
 
         {sent ? (
@@ -57,27 +58,26 @@ export default function ForgotPasswordScreen() {
               label="Email"
               value={email}
               onChangeText={setEmail}
+              onBlur={() => setTouched(true)}
+              error={emailError}
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
               placeholder="you@example.com"
               editable={!submitting}
+              onSubmitEditing={() => void onSubmit()}
+              returnKeyType="send"
             />
             {error ? (
               <View className="rounded-lg border border-red-200 bg-red-50 p-3">
                 <Text className="text-[14px] text-red-700">{error}</Text>
               </View>
             ) : null}
-            <Button
-              label="Send reset link"
-              onPress={onSubmit}
-              loading={submitting}
-              disabled={email.trim().length === 0 || submitting}
-            />
+            <Button label="Send reset link" onPress={() => void onSubmit()} loading={submitting} disabled={!EMAIL.test(email.trim()) || submitting} />
             <Button label="Back" variant="ghost" onPress={() => router.back()} />
           </View>
         )}
       </View>
-    </Screen>
+    </AuthBrandShell>
   );
 }
